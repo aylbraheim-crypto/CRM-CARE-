@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>فيول كير | خدمة العملاء</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #080C14; font-family: 'IBM Plex Sans Arabic', Tahoma, sans-serif; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0F172A; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    input, textarea, select { outline: none; }
+    .card { background: #0F172A; border: 1px solid #1E293B; border-radius: 12px; }
+    .btn-primary { background: linear-gradient(135deg, #F97316, #EA580C); color: white; border: none; border-radius: 8px; padding: 10px 20px; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 600; transition: all 0.2s; }
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-ghost { background: transparent; color: #94A3B8; border: 1px solid #1E293B; border-radius: 8px; padding: 10px 20px; cursor: pointer; font-family: inherit; font-size: 14px; transition: all 0.2s; }
+    .btn-ghost:hover { background: #1E293B; color: #E2E8F0; }
+    .nav-item { padding: 10px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s; display: flex; align-items: center; gap: 8px; background: none; border: none; color: #94A3B8; font-family: inherit; }
+    .nav-item:hover { background: #1E293B; color: #E2E8F0; }
+    .nav-item.active { background: linear-gradient(135deg, #F97316 0%, #EA580C 100%); color: white; }
+    .stat-card { background: #0F172A; border: 1px solid #1E293B; border-radius: 14px; padding: 20px; }
+    .input-field { background: #0F172A; border: 1px solid #1E293B; border-radius: 8px; padding: 12px 16px; color: #E2E8F0; font-family: inherit; font-size: 14px; width: 100%; transition: border-color 0.2s; }
+    .input-field:focus { border-color: #F97316; }
+    .input-field::placeholder { color: #475569; }
+    select.input-field option { background: #0F172A; }
+    .ticket-row { padding: 14px 20px; border-bottom: 1px solid #1E293B; cursor: pointer; transition: background 0.2s; }
+    .ticket-row:hover { background: #111827; }
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .slide-in { animation: slideIn 0.4s ease forwards; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .pulse { animation: pulse 2s infinite; }
+    .notif-panel { position: absolute; top: 56px; left: 8px; width: 320px; background: #0F172A; border: 1px solid #1E293B; border-radius: 14px; box-shadow: 0 20px 40px #00000088; z-index: 999; max-height: 400px; overflow-y: auto; }
+    @media (max-width: 768px) {
+      .hide-mobile { display: none !important; }
+      .grid-2 { grid-template-columns: 1fr !important; }
+      .notif-panel { width: calc(100vw - 32px); left: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const USERS = [
+      { id:"admin",     username:"admin",          password:"Admin@2024",    name:"المدير العام",                  role:"admin", dept:null,          icon:"👑" },
+      { id:"cs",        username:"خدمة_عملاء",     password:"CS@2024",       name:"قسم خدمة العملاء",              role:"dept",  dept:"service",      icon:"🤝" },
+      { id:"accounting",username:"محاسبة",          password:"ACC@2024",      name:"قسم المحاسبة",                  role:"dept",  dept:"accounting",   icon:"💰" },
+      { id:"ops",       username:"تشغيل",           password:"OPS@2024",      name:"قسم التشغيل",                   role:"dept",  dept:"operations",   icon:"⚙️" },
+      { id:"maint",     username:"صيانة",           password:"MNT@2024",      name:"قسم الصيانة",                   role:"dept",  dept:"maintenance",  icon:"🔧" },
+      { id:"safety",    username:"سلامة_مهنية",     password:"HSE@2024",      name:"قسم السلامة والصحة المهنية",    role:"dept",  dept:"safety",       icon:"🛡️" },
+      { id:"marketing", username:"تسويق",           password:"MKT@2024",      name:"إدارة التسويق",                 role:"dept",  dept:"marketing",    icon:"📣" },
+    ];
+
+    const DEPARTMENTS = {
+      service:     { label:"خدمة العملاء",           icon:"🤝", color:"#3B82F6" },
+      accounting:  { label:"المحاسبة",               icon:"💰", color:"#10B981" },
+      operations:  { label:"التشغيل",                icon:"⚙️", color:"#F59E0B" },
+      maintenance: { label:"الصيانة",                icon:"🔧", color:"#8B5CF6" },
+      safety:      { label:"السلامة والصحة المهنية", icon:"🛡️", color:"#EF4444" },
+      marketing:   { label:"إدارة التسويق",          icon:"📣", color:"#EC4899" },
+    };
+
+    const STATUS = {
+      new:        { label:"جديد",         color:"#64748B", bg:"#1E293B",  icon:"🆕" },
+      inprogress: { label:"قيد المعالجة", color:"#F59E0B", bg:"#292000",  icon:"⚙️" },
+      pending:    { label:"في الانتظار",  color:"#3B82F6", bg:"#0D1F3C",  icon:"⏳" },
+      resolved:   { label:"تم الحل",      color:"#10B981", bg:"#052E16",  icon:"✅" },
+      closed:     { label:"مغلق",         color:"#6B7280", bg:"#111827",  icon:"🔒" },
+    };
+
+    const PRIORITIES = [
+      { value:"low",      label:"منخفض", color:"#10B981" },
+      { value:"medium",   label:"متوسط", color:"#F59E0B" },
+      { value:"high",     label:"عالي",  color:"#F97316" },
+      { value:"critical", label:"حرج",   color:"#EF4444" },
+    ];
+
+    const STATIONS = ["محطة الرياض شمال","محطة الرياض جنوب","محطة الرياض شرق","محطة جدة الغربية","محطة جدة الشمالية","محطة الدمام المركزية","محطة الخبر","محطة القطيف"];
+
+    const INIT_TICKETS = [
+      { id:"TKT-0001", title:"عطل في مضخة الوقود بمحطة الرياض شمال", description:"المضخة رقم 3 توقفت عن العمل منذ الصباح ولم يتم إصلاحها", department:"maintenance", status:"inprogress", priority:"high", date:"2026-04-20", customer:"أحمد الحربي", phone:"0501234567", station:"محطة الرياض شمال", updates:[{date:"2026-04-20",text:"تم استلام البلاغ وإحالته لقسم الصيانة",by:"قسم خدمة العملاء"},{date:"2026-04-21",text:"جاري فحص المضخة وطلب قطع الغيار",by:"قسم الصيانة"}] },
+      { id:"TKT-0002", title:"عدم توفر معدات الحماية الشخصية للعمال", description:"لاحظت أن بعض العمال في المحطة لا يرتدون معدات السلامة اللازمة", department:"safety", status:"resolved", priority:"critical", date:"2026-04-18", customer:"محمد العتيبي", phone:"0559876543", station:"محطة جدة الغربية", updates:[{date:"2026-04-18",text:"تم استلام البلاغ وإحالته لقسم السلامة والصحة المهنية",by:"قسم خدمة العملاء"},{date:"2026-04-19",text:"تم توزيع معدات الحماية وتوعية العمال",by:"قسم السلامة والصحة المهنية"}] },
+      { id:"TKT-0003", title:"خطأ في فاتورة الوقود", description:"تم خصم مبلغ إضافي من الحساب دون ما يقابله من كمية وقود", department:"accounting", status:"pending", priority:"medium", date:"2026-04-21", customer:"سارة القحطاني", phone:"0541112233", station:"محطة الدمام المركزية", updates:[{date:"2026-04-21",text:"تم استلام الشكوى وإحالتها لقسم المحاسبة",by:"قسم خدمة العملاء"}] },
+      { id:"TKT-0004", title:"اقتراح تحسين اللافتات والعروض الترويجية", description:"اقتراح بتجديد لافتات المحطة وإضافة عروض ترويجية لجذب العملاء", department:"marketing", status:"new", priority:"low", date:"2026-04-22", customer:"خالد السعد", phone:"0556781234", station:"محطة الرياض شرق", updates:[{date:"2026-04-22",text:"تم استلام الاقتراح وإحالته لإدارة التسويق",by:"قسم خدمة العملاء"}] },
+      { id:"TKT-0005", title:"انقطاع في نظام نقاط البيع الإلكتروني", description:"نظام الدفع الإلكتروني لا يعمل منذ ساعتين في المحطة", department:"operations", status:"inprogress", priority:"high", date:"2026-04-23", customer:"فهد الرشيد", phone:"0503456789", station:"محطة الخبر", updates:[{date:"2026-04-23",text:"تم استلام البلاغ وإحالته لقسم التشغيل",by:"قسم خدمة العملاء"}] },
+    ];
+
+    // ---- Login ----
+    function LoginScreen({ onLogin }) {
+      const [u, setU] = useState(""); const [p, setP] = useState(""); const [err, setErr] = useState(""); const [show, setShow] = useState(false);
+      const go = () => { const user=USERS.find(x=>x.username===u.trim()&&x.password===p); if(user){onLogin(user);}else{setErr("اسم المستخدم أو كلمة المرور غير صحيحة");} };
+      return (
+        <div style={{minHeight:"100vh",background:"#080C14",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <div style={{width:"100%",maxWidth:420}}>
+            <div style={{textAlign:"center",marginBottom:32}}>
+              <div style={{width:64,height:64,background:"linear-gradient(135deg,#F97316,#EA580C)",borderRadius:18,display:"flex",alignItems:"center",justifyContent:"center",fontSize:32,margin:"0 auto 14px"}}>⛽</div>
+              <h1 style={{fontSize:26,fontWeight:800,color:"#F1F5F9"}}>فيول كير</h1>
+              <p style={{color:"#64748B",fontSize:13,marginTop:4}}>نظام خدمة عملاء محطات الوقود</p>
+            </div>
+            <div className="card" style={{padding:28,marginBottom:14}}>
+              <h2 style={{fontSize:17,fontWeight:700,color:"#F1F5F9",marginBottom:22,textAlign:"center"}}>🔐 تسجيل الدخول</h2>
+              <div style={{marginBottom:14}}>
+                <label style={{fontSize:13,color:"#94A3B8",fontWeight:600,marginBottom:6,display:"block"}}>اسم المستخدم</label>
+                <input className="input-field" placeholder="أدخل اسم المستخدم" value={u} onChange={e=>setU(e.target.value)} onKeyDown={e=>e.key==="Enter"&&go()} />
+              </div>
+              <div style={{marginBottom:18}}>
+                <label style={{fontSize:13,color:"#94A3B8",fontWeight:600,marginBottom:6,display:"block"}}>كلمة المرور</label>
+                <div style={{position:"relative"}}>
+                  <input className="input-field" type={show?"text":"password"} placeholder="أدخل كلمة المرور" value={p} onChange={e=>setP(e.target.value)} onKeyDown={e=>e.key==="Enter"&&go()} style={{paddingLeft:42}} />
+                  <button onClick={()=>setShow(!show)} style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#64748B",cursor:"pointer",fontSize:15}}>{show?"🙈":"👁️"}</button>
+                </div>
+              </div>
+              {err&&<div style={{background:"#1F0000",border:"1px solid #EF444455",borderRadius:8,padding:10,color:"#EF4444",fontSize:13,marginBottom:14,textAlign:"center"}}>❌ {err}</div>}
+              <button className="btn-primary" onClick={go} style={{width:"100%",padding:13,fontSize:15}}>دخول →</button>
+            </div>
+            <div className="card" style={{padding:16}}>
+              <div style={{fontSize:12,color:"#64748B",marginBottom:10,fontWeight:700}}>اضغط لتجربة حساب:</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                {USERS.map(x=>(
+                  <button key={x.id} onClick={()=>{setU(x.username);setP(x.password);setErr("");}} style={{background:"#080C14",borderRadius:6,padding:"7px 10px",cursor:"pointer",fontSize:11,color:"#94A3B8",display:"flex",alignItems:"center",gap:6,border:"1px solid #1E293B",fontFamily:"inherit",transition:"border-color 0.2s",textAlign:"right"}}
+                    onMouseEnter={e=>e.currentTarget.style.borderColor="#F97316"} onMouseLeave={e=>e.currentTarget.style.borderColor="#1E293B"}>
+                    <span>{x.icon}</span><span>{x.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ---- Bell ----
+    function Bell({ notifs, uid, onRead }) {
+      const [open, setOpen] = useState(false); const ref = useRef();
+      const mine = notifs.filter(n=>n.to.includes(uid));
+      const unread = mine.filter(n=>!n.readBy.includes(uid));
+      useEffect(()=>{ const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);}; document.addEventListener("mousedown",h); return()=>document.removeEventListener("mousedown",h); },[]);
+      return (
+        <div ref={ref} style={{position:"relative"}}>
+          <button onClick={()=>setOpen(!open)} style={{background:"none",border:"none",cursor:"pointer",position:"relative",padding:"6px 8px"}}>
+            <span style={{fontSize:20}}>🔔</span>
+            {unread.length>0&&<div style={{position:"absolute",top:2,right:2,width:17,height:17,background:"#EF4444",borderRadius:"50%",fontSize:10,color:"white",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>{unread.length}</div>}
+          </button>
+          {open&&(
+            <div className="notif-panel">
+              <div style={{padding:"12px 16px",borderBottom:"1px solid #1E293B",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontWeight:700,fontSize:14,color:"#F1F5F9"}}>الإشعارات {unread.length>0&&<span style={{color:"#EF4444"}}>({unread.length})</span>}</span>
+                {unread.length>0&&<button onClick={()=>unread.forEach(n=>onRead(n.id,uid))} style={{background:"none",border:"none",color:"#F97316",cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit"}}>تحديد الكل مقروء</button>}
+              </div>
+              {mine.length===0&&<div style={{padding:24,textAlign:"center",color:"#64748B",fontSize:13}}>لا توجد إشعارات</div>}
+              {mine.slice(0,10).map(n=>{
+                const read=n.readBy.includes(uid);
+                return (
+                  <div key={n.id} onClick={()=>onRead(n.id,uid)} style={{padding:"11px 16px",borderBottom:"1px solid #1E293B",cursor:"pointer",background:read?"transparent":"#0A1628"}}>
+                    <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
+                      <span style={{fontSize:17,flexShrink:0}}>{n.icon}</span>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:12,color:read?"#64748B":"#E2E8F0",fontWeight:read?400:600,marginBottom:3,lineHeight:1.5}}>{n.message}</div>
+                        <div style={{fontSize:11,color:"#475569"}}>{n.ticketId} · {n.date}</div>
+                      </div>
+                      {!read&&<div style={{width:7,height:7,borderRadius:"50%",background:"#F97316",flexShrink:0,marginTop:5}}/>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ---- Track ----
+    function Track({ tickets }) {
+      const [q,setQ]=useState(""); const [found,setFound]=useState(null); const [err,setErr]=useState(false);
+      const go=()=>{ const t=tickets.find(t=>t.id===q.trim().toUpperCase()); if(t){setFound(t);setErr(false);}else{setFound(null);setErr(true);} };
+      return (
+        <div>
+          <div className="card" style={{padding:24,marginBottom:20}}>
+            <div style={{display:"flex",gap:12}}>
+              <input className="input-field" style={{flex:1}} placeholder="مثال: TKT-0001" value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&go()} />
+              <button className="btn-primary" onClick={go}>بحث</button>
+            </div>
+          </div>
+          {err&&<div style={{background:"#1F0000",border:"1px solid #EF4444",borderRadius:10,padding:16,color:"#EF4444",textAlign:"center"}}>❌ لم يتم العثور على الطلب</div>}
+          {found&&(
+            <div className="slide-in">
+              <div className="card" style={{padding:24,marginBottom:16}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
+                  <div><div style={{color:"#F97316",fontSize:13,fontWeight:700}}>{found.id}</div><div style={{fontSize:17,fontWeight:700,color:"#F1F5F9",marginTop:4}}>{found.title}</div></div>
+                  <div className="badge" style={{background:STATUS[found.status].bg,color:STATUS[found.status].color,padding:"7px 14px",fontSize:14}}>{STATUS[found.status].icon} {STATUS[found.status].label}</div>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:16,flexWrap:"wrap"}}>
+                  {["new","inprogress","pending","resolved","closed"].map((s,i,arr)=>{
+                    const ci=arr.indexOf(found.status); const active=i<=ci;
+                    return (<React.Fragment key={s}>
+                      <div style={{textAlign:"center"}}>
+                        <div style={{width:26,height:26,borderRadius:"50%",background:active?STATUS[s].color:"#1E293B",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"white",border:`2px solid ${active?STATUS[s].color:"#334155"}`}}>{active?"✓":""}</div>
+                        <div style={{fontSize:9,color:active?STATUS[s].color:"#475569",marginTop:2,whiteSpace:"nowrap"}}>{STATUS[s].label}</div>
+                      </div>
+                      {i<4&&<div style={{width:18,height:2,background:i<ci?"#F97316":"#1E293B",marginBottom:14}}/>}
+                    </React.Fragment>);
+                  })}
+                </div>
+                <div style={{background:"#080C14",borderRadius:8,padding:12,fontSize:13,color:"#94A3B8"}}>{found.description}</div>
+              </div>
+              <div className="card" style={{padding:20}}>
+                <h3 style={{fontSize:14,fontWeight:700,marginBottom:14,color:"#F1F5F9"}}>📋 سجل التحديثات</h3>
+                {found.updates.map((u,i)=>(
+                  <div key={i} style={{display:"flex",gap:12,marginBottom:14}}>
+                    <div style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
+                      <div style={{width:9,height:9,borderRadius:"50%",background:"#F97316",flexShrink:0,marginTop:4}}/>
+                      {i<found.updates.length-1&&<div style={{width:2,background:"#1E293B",flex:1,marginTop:4,minHeight:16}}/>}
+                    </div>
+                    <div style={{flex:1,paddingBottom:6}}>
+                      <div style={{background:"#080C14",borderRadius:8,padding:10}}>
+                        <div style={{fontSize:13,color:"#E2E8F0",marginBottom:4}}>{u.text}</div>
+                        <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#64748B"}}><span>{u.by}</span><span>{u.date}</span></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ---- Main ----
+    function App() {
+      const [user, setUser] = useState(null);
+      const [view, setView] = useState("dashboard");
+      const [tickets, setTickets] = useState(INIT_TICKETS);
+      const [notifs, setNotifs] = useState([]);
+      const [sel, setSel] = useState(null);
+      const [form, setForm] = useState({title:"",description:"",department:"",priority:"medium",customer:"",phone:"",station:""});
+      const [fStatus, setFStatus] = useState("all"); const [fDept, setFDept] = useState("all"); const [search, setSearch] = useState("");
+      const [updText, setUpdText] = useState(""); const [updStatus, setUpdStatus] = useState("");
+      const [submitted, setSubmitted] = useState(false); const [newId, setNewId] = useState("");
+
+      const addNotif = (n) => setNotifs(prev=>[{...n,id:Date.now()+"",date:new Date().toLocaleDateString("ar"),readBy:[],...n},...prev]);
+      const markRead = (id,uid) => setNotifs(prev=>prev.map(n=>n.id===id&&!n.readBy.includes(uid)?{...n,readBy:[...n.readBy,uid]}:n));
+
+      const isAdmin = user?.role==="admin";
+      const visible = tickets.filter(t=> user && (isAdmin || t.department===user.dept));
+      const filtered = visible.filter(t=>{
+        return (fStatus==="all"||t.status===fStatus) && (fDept==="all"||t.department===fDept) &&
+               (!search||t.title.includes(search)||t.id.includes(search)||t.customer.includes(search));
+      });
+      const stats = { total:visible.length, new:visible.filter(t=>t.status==="new").length, inprogress:visible.filter(t=>t.status==="inprogress").length, resolved:visible.filter(t=>t.status==="resolved"||t.status==="closed").length, critical:visible.filter(t=>t.priority==="critical").length };
+
+      const doSubmit = () => {
+        if(!form.title||!form.description||!form.department||!form.customer||!form.phone||!form.station){alert("يرجى ملء جميع الحقول *");return;}
+        const id=`TKT-${String(tickets.length+1).padStart(4,"0")}`;
+        const t={...form,id,status:"new",date:new Date().toISOString().split("T")[0],updates:[{date:new Date().toISOString().split("T")[0],text:`تم استلام الملاحظة وإحالتها لـ ${DEPARTMENTS[form.department]?.label}`,by:user.name}]};
+        setTickets(p=>[t,...p]); setNewId(id); setSubmitted(true);
+        const du=USERS.find(x=>x.dept===form.department);
+        const au=USERS.find(x=>x.role==="admin");
+        addNotif({message:`🆕 طلب جديد: ${form.title}`,ticketId:id,icon:"🆕",to:[du?.id,au?.id].filter(x=>x&&x!==user.id)});
+        setForm({title:"",description:"",department:"",priority:"medium",customer:"",phone:"",station:""});
+      };
+
+      const doUpdate = (stOv, txOv) => {
+        const st=stOv||updStatus; const tx=txOv||updText;
+        if(!tx&&!st) return;
+        setTickets(prev=>prev.map(t=>{
+          if(t.id!==sel.id) return t;
+          const up={...t,status:st||t.status,updates:[...t.updates,{date:new Date().toISOString().split("T")[0],text:tx||`تم تغيير الحالة إلى: ${STATUS[st]?.label}`,by:user.name}]};
+          setSel(up);
+          if(st==="resolved"||st==="closed"){
+            const cu=USERS.find(x=>x.dept==="service"); const au=USERS.find(x=>x.role==="admin");
+            addNotif({message:`✅ تم حل الطلب: "${t.title}" — بواسطة ${user.name}`,ticketId:t.id,icon:"✅",to:[cu?.id,au?.id].filter(x=>x&&x!==user.id)});
+          } else if(st){
+            const au=USERS.find(x=>x.role==="admin");
+            if(au&&au.id!==user.id) addNotif({message:`تحديث على "${t.title}": ${STATUS[st]?.label}`,ticketId:t.id,icon:STATUS[st]?.icon||"🔔",to:[au.id]});
+          }
+          return up;
+        }));
+        setUpdText(""); setUpdStatus("");
+      };
+
+      if(!user) return <LoginScreen onLogin={u=>{setUser(u);setView("dashboard");}} />;
+
+      const navItems=[["dashboard","📊","لوحة التحكم"],...(isAdmin?[["new","➕","طلب جديد"]]:[]),["tickets","📋","الطلبات"],["track","🔍","تتبع"]];
+
+      return (
+        <div dir="rtl" style={{minHeight:"100vh",background:"#080C14",color:"#E2E8F0"}}>
+          {/* NAV */}
+          <div style={{background:"#0A0F1A",borderBottom:"1px solid #1E293B",padding:"0 16px",display:"flex",alignItems:"center",justifyContent:"space-between",height:58,position:"sticky",top:0,zIndex:100,gap:8}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
+              <div style={{width:34,height:34,background:"linear-gradient(135deg,#F97316,#EA580C)",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:17}}>⛽</div>
+              <div className="hide-mobile"><div style={{fontWeight:700,fontSize:14,color:"#F1F5F9"}}>فيول كير</div><div style={{fontSize:10,color:"#64748B"}}>نظام خدمة العملاء</div></div>
+            </div>
+            <div style={{display:"flex",gap:2}}>
+              {navItems.map(([v,ic,lb])=>(
+                <button key={v} className={`nav-item ${view===v?"active":""}`} onClick={()=>{setView(v);setSubmitted(false);setSel(null);}}>
+                  <span>{ic}</span><span className="hide-mobile">{lb}</span>
+                </button>
+              ))}
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+              {stats.critical>0&&<div className="badge pulse hide-mobile" style={{background:"#3F0000",color:"#EF4444"}}>⚠️{stats.critical}</div>}
+              <Bell notifs={notifs} uid={user.id} onRead={markRead} />
+              <button onClick={()=>setUser(null)} style={{display:"flex",alignItems:"center",gap:8,background:"#1E293B",border:"none",borderRadius:8,padding:"5px 12px",cursor:"pointer",color:"#E2E8F0",fontFamily:"inherit",fontSize:13}}>
+                <span>{user.icon}</span><span className="hide-mobile" style={{fontWeight:600}}>{user.name}</span><span style={{fontSize:11,color:"#64748B"}}>خروج</span>
+              </button>
+            </div>
+          </div>
+
+          <div style={{maxWidth:1200,margin:"0 auto",padding:"20px 16px"}}>
+
+            {/* DASHBOARD */}
+            {view==="dashboard"&&(
+              <div className="slide-in">
+                <div style={{marginBottom:20}}>
+                  <h1 style={{fontSize:21,fontWeight:700,color:"#F1F5F9"}}>مرحباً، {user.name} {user.icon}</h1>
+                  <p style={{color:"#64748B",fontSize:13,marginTop:3}}>{isAdmin?"نظرة عامة على جميع الطلبات":`طلبات ${DEPARTMENTS[user.dept]?.label}`}</p>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(145px,1fr))",gap:13,marginBottom:22}}>
+                  {[{label:"إجمالي",value:stats.total,icon:"📋",color:"#3B82F6"},{label:"جديدة",value:stats.new,icon:"🆕",color:"#64748B"},{label:"قيد المعالجة",value:stats.inprogress,icon:"⚙️",color:"#F59E0B"},{label:"تم الحل",value:stats.resolved,icon:"✅",color:"#10B981"},{label:"حرجة",value:stats.critical,icon:"⚠️",color:"#EF4444"}].map(s=>(
+                    <div key={s.label} className="stat-card" style={{borderTop:`3px solid ${s.color}`}}>
+                      <div style={{fontSize:22,marginBottom:8}}>{s.icon}</div>
+                      <div style={{fontSize:26,fontWeight:800,color:s.color,lineHeight:1}}>{s.value}</div>
+                      <div style={{fontSize:12,color:"#94A3B8",marginTop:5}}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:isAdmin?"1fr 1fr":"1fr",gap:16}} className="grid-2">
+                  {isAdmin&&(
+                    <div className="card" style={{padding:20}}>
+                      <h3 style={{fontSize:14,fontWeight:700,color:"#F1F5F9",marginBottom:14}}>📊 توزيع حسب القسم</h3>
+                      {Object.entries(DEPARTMENTS).map(([k,d])=>{
+                        const c=tickets.filter(t=>t.department===k).length;
+                        const pct=tickets.length?Math.round(c/tickets.length*100):0;
+                        return (<div key={k} style={{marginBottom:11}}>
+                          <div style={{display:"flex",justifyContent:"space-between",marginBottom:3,fontSize:12}}><span>{d.icon} {d.label}</span><span style={{color:d.color,fontWeight:700}}>{c}</span></div>
+                          <div style={{background:"#1E293B",borderRadius:20,height:5}}><div style={{width:`${pct}%`,background:d.color,borderRadius:20,height:"100%"}}/></div>
+                        </div>);
+                      })}
+                    </div>
+                  )}
+                  <div className="card" style={{padding:20}}>
+                    <h3 style={{fontSize:14,fontWeight:700,color:"#F1F5F9",marginBottom:14}}>🕐 آخر الطلبات</h3>
+                    {visible.slice(0,5).map(t=>(
+                      <div key={t.id} onClick={()=>{setSel(t);setView("tickets");}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:"1px solid #1E293B",cursor:"pointer",gap:8}}>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:13,fontWeight:600,color:"#E2E8F0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</div>
+                          <div style={{fontSize:11,color:"#64748B",marginTop:2}}>{t.id} · {t.customer}</div>
+                        </div>
+                        <div className="badge" style={{background:STATUS[t.status].bg,color:STATUS[t.status].color,whiteSpace:"nowrap"}}>{STATUS[t.status].icon} {STATUS[t.status].label}</div>
+                      </div>
+                    ))}
+                    {visible.length===0&&<div style={{textAlign:"center",padding:20,color:"#64748B",fontSize:13}}>لا توجد طلبات ✅</div>}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* NEW */}
+            {view==="new"&&isAdmin&&!submitted&&(
+              <div className="slide-in" style={{maxWidth:660,margin:"0 auto"}}>
+                <h1 style={{fontSize:19,fontWeight:700,marginBottom:4,color:"#F1F5F9"}}>تقديم ملاحظة أو شكوى</h1>
+                <p style={{color:"#64748B",fontSize:13,marginBottom:22}}>سيصل إشعار فوري للقسم المختص</p>
+                <div className="card" style={{padding:24}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:13,marginBottom:13}} className="grid-2">
+                    <div><label style={{fontSize:12,color:"#94A3B8",fontWeight:600,marginBottom:5,display:"block"}}>الاسم *</label><input className="input-field" placeholder="اسم العميل" value={form.customer} onChange={e=>setForm(f=>({...f,customer:e.target.value}))} /></div>
+                    <div><label style={{fontSize:12,color:"#94A3B8",fontWeight:600,marginBottom:5,display:"block"}}>الجوال *</label><input className="input-field" placeholder="05XXXXXXXX" value={form.phone} onChange={e=>setForm(f=>({...f,phone:e.target.value}))} /></div>
+                  </div>
+                  <div style={{marginBottom:13}}><label style={{fontSize:12,color:"#94A3B8",fontWeight:600,marginBottom:5,display:"block"}}>المحطة *</label>
+                    <select className="input-field" value={form.station} onChange={e=>setForm(f=>({...f,station:e.target.value}))}><option value="">اختر المحطة</option>{STATIONS.map(s=><option key={s} value={s}>{s}</option>)}</select>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:13,marginBottom:13}} className="grid-2">
+                    <div><label style={{fontSize:12,color:"#94A3B8",fontWeight:600,marginBottom:5,display:"block"}}>القسم *</label>
+                      <select className="input-field" value={form.department} onChange={e=>setForm(f=>({...f,department:e.target.value}))}><option value="">اختر القسم</option>{Object.entries(DEPARTMENTS).map(([k,v])=><option key={k} value={k}>{v.icon} {v.label}</option>)}</select>
+                    </div>
+                    <div><label style={{fontSize:12,color:"#94A3B8",fontWeight:600,marginBottom:5,display:"block"}}>الأولوية</label>
+                      <select className="input-field" value={form.priority} onChange={e=>setForm(f=>({...f,priority:e.target.value}))}>{PRIORITIES.map(p=><option key={p.value} value={p.value}>{p.label}</option>)}</select>
+                    </div>
+                  </div>
+                  <div style={{marginBottom:13}}><label style={{fontSize:12,color:"#94A3B8",fontWeight:600,marginBottom:5,display:"block"}}>عنوان الطلب *</label><input className="input-field" placeholder="وصف مختصر للمشكلة" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} /></div>
+                  <div style={{marginBottom:18}}><label style={{fontSize:12,color:"#94A3B8",fontWeight:600,marginBottom:5,display:"block"}}>التفاصيل *</label><textarea className="input-field" rows={4} placeholder="اشرح المشكلة بالتفصيل..." value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} style={{resize:"vertical"}}/></div>
+                  {form.department&&<div style={{background:"#0A1628",border:"1px solid #1E3A5F",borderRadius:8,padding:11,marginBottom:16,display:"flex",alignItems:"center",gap:10,fontSize:12}}>
+                    <span style={{fontSize:18}}>{DEPARTMENTS[form.department]?.icon}</span>
+                    <span style={{color:"#93C5FD"}}>سيصل إشعار فوري لـ <strong>{DEPARTMENTS[form.department]?.label}</strong></span>
+                  </div>}
+                  <button className="btn-primary" onClick={doSubmit} style={{width:"100%",padding:13,fontSize:14}}>🔔 إرسال الطلب وإشعار القسم</button>
+                </div>
+              </div>
+            )}
+
+            {/* SUCCESS */}
+            {view==="new"&&submitted&&(
+              <div className="slide-in" style={{maxWidth:440,margin:"60px auto",textAlign:"center"}}>
+                <div style={{fontSize:60,marginBottom:14}}>✅</div>
+                <h2 style={{fontSize:21,fontWeight:800,color:"#10B981",marginBottom:10}}>تم الإرسال بنجاح!</h2>
+                <div className="card" style={{padding:22,marginBottom:18}}>
+                  <div style={{fontSize:12,color:"#64748B",marginBottom:6}}>رقم الطلب</div>
+                  <div style={{fontSize:28,fontWeight:800,color:"#F97316",letterSpacing:2}}>{newId}</div>
+                  <div style={{fontSize:12,color:"#10B981",marginTop:8}}>🔔 تم إرسال إشعار للقسم المختص</div>
+                </div>
+                <div style={{display:"flex",gap:10,justifyContent:"center"}}>
+                  <button className="btn-primary" onClick={()=>{setView("tickets");setSubmitted(false);}}>عرض الطلبات</button>
+                  <button className="btn-ghost" onClick={()=>setSubmitted(false)}>طلب جديد</button>
+                </div>
+              </div>
+            )}
+
+            {/* TICKETS LIST */}
+            {view==="tickets"&&!sel&&(
+              <div className="slide-in">
+                <div style={{marginBottom:18}}><h1 style={{fontSize:19,fontWeight:700,color:"#F1F5F9"}}>{isAdmin?"جميع الطلبات":`طلبات ${DEPARTMENTS[user.dept]?.label}`}</h1><p style={{color:"#64748B",fontSize:12,marginTop:2}}>{filtered.length} طلب</p></div>
+                <div className="card" style={{padding:13,marginBottom:13}}>
+                  <div style={{display:"grid",gridTemplateColumns:isAdmin?"1fr auto auto":"1fr auto",gap:10}}>
+                    <input className="input-field" placeholder="🔍 بحث..." value={search} onChange={e=>setSearch(e.target.value)} />
+                    <select className="input-field" style={{width:"auto"}} value={fStatus} onChange={e=>setFStatus(e.target.value)}>
+                      <option value="all">كل الحالات</option>{Object.entries(STATUS).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
+                    </select>
+                    {isAdmin&&<select className="input-field" style={{width:"auto"}} value={fDept} onChange={e=>setFDept(e.target.value)}>
+                      <option value="all">كل الأقسام</option>{Object.entries(DEPARTMENTS).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
+                    </select>}
+                  </div>
+                </div>
+                <div className="card" style={{overflow:"hidden"}}>
+                  {filtered.length===0&&<div style={{textAlign:"center",padding:36,color:"#64748B"}}>لا توجد طلبات</div>}
+                  {filtered.map(t=>{
+                    const d=DEPARTMENTS[t.department]; const s=STATUS[t.status]; const pr=PRIORITIES.find(p=>p.value===t.priority);
+                    return (
+                      <div key={t.id} className="ticket-row" onClick={()=>setSel(t)}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+                          <div>
+                            <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:4,flexWrap:"wrap"}}>
+                              <span style={{color:"#F97316",fontWeight:700,fontSize:12}}>{t.id}</span>
+                              <span className="badge" style={{background:s.bg,color:s.color}}>{s.icon} {s.label}</span>
+                              <span className="badge" style={{color:pr?.color,background:pr?.color+"15"}}>● {pr?.label}</span>
+                            </div>
+                            <div style={{fontWeight:600,fontSize:13,color:"#E2E8F0"}}>{t.title}</div>
+                            <div style={{fontSize:11,color:"#64748B",marginTop:2}}>{t.customer} · {t.station} · {t.date}</div>
+                          </div>
+                          {isAdmin&&<div className="badge" style={{background:"#0F172A",color:d?.color,border:`1px solid ${d?.color}33`}}>{d?.icon} {d?.label}</div>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* TICKET DETAIL */}
+            {view==="tickets"&&sel&&(
+              <div className="slide-in">
+                <button className="btn-ghost" onClick={()=>setSel(null)} style={{marginBottom:18}}>← العودة</button>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 290px",gap:14}} className="grid-2">
+                  <div>
+                    <div className="card" style={{padding:20,marginBottom:13}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,gap:10,flexWrap:"wrap"}}>
+                        <div><div style={{color:"#F97316",fontWeight:700,marginBottom:3,fontSize:11}}>{sel.id}</div><h2 style={{fontSize:17,fontWeight:700,color:"#F1F5F9"}}>{sel.title}</h2></div>
+                        <div className="badge" style={{background:STATUS[sel.status].bg,color:STATUS[sel.status].color,fontSize:13,padding:"5px 12px"}}>{STATUS[sel.status].icon} {STATUS[sel.status].label}</div>
+                      </div>
+                      <div style={{background:"#080C14",borderRadius:8,padding:13,fontSize:13,color:"#CBD5E1",lineHeight:1.8,marginBottom:13}}>{sel.description}</div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:9}} className="grid-2">
+                        {[["👤",sel.customer],["📱",sel.phone],["⛽",sel.station]].map(([ic,v])=>(
+                          <div key={ic} style={{background:"#080C14",borderRadius:8,padding:9}}><div style={{fontSize:11,color:"#64748B"}}>{ic}</div><div style={{fontSize:12,fontWeight:600,marginTop:3,color:"#E2E8F0"}}>{v}</div></div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="card" style={{padding:20}}>
+                      <h3 style={{fontSize:13,fontWeight:700,marginBottom:14,color:"#F1F5F9"}}>📍 سجل المتابعة</h3>
+                      {sel.updates.map((u,i)=>(
+                        <div key={i} style={{display:"flex",gap:11,marginBottom:13}}>
+                          <div style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
+                            <div style={{width:9,height:9,borderRadius:"50%",background:"#F97316",flexShrink:0,marginTop:4}}/>
+                            {i<sel.updates.length-1&&<div style={{width:2,background:"#1E293B",flex:1,marginTop:4,minHeight:16}}/>}
+                          </div>
+                          <div style={{flex:1,paddingBottom:6}}>
+                            <div style={{background:"#080C14",borderRadius:8,padding:11}}>
+                              <div style={{fontSize:12,color:"#E2E8F0",marginBottom:5}}>{u.text}</div>
+                              <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#64748B"}}><span>{u.by}</span><span>{u.date}</span></div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {sel.status!=="closed"&&(
+                        <div style={{background:"#080C14",borderRadius:10,padding:13,marginTop:6}}>
+                          <div style={{fontSize:12,fontWeight:600,marginBottom:9,color:"#94A3B8"}}>➕ إضافة تحديث</div>
+                          <textarea className="input-field" rows={3} placeholder="أدخل ملاحظات التحديث..." value={updText} onChange={e=>setUpdText(e.target.value)} style={{marginBottom:9,resize:"none"}}/>
+                          <div style={{display:"flex",gap:9}}>
+                            <select className="input-field" style={{flex:1}} value={updStatus} onChange={e=>setUpdStatus(e.target.value)}>
+                              <option value="">تغيير الحالة</option>{Object.entries(STATUS).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
+                            </select>
+                            <button className="btn-primary" onClick={()=>doUpdate()}>حفظ</button>
+                          </div>
+                          {(updStatus==="resolved"||updStatus==="closed")&&(
+                            <div style={{marginTop:9,background:"#052E16",border:"1px solid #10B98133",borderRadius:8,padding:9,fontSize:11,color:"#10B981"}}>
+                              🔔 سيصل إشعار تلقائي لقسم الجودة وخدمة العملاء
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="card" style={{padding:16,marginBottom:13}}>
+                      <h3 style={{fontSize:12,fontWeight:700,marginBottom:13,color:"#94A3B8"}}>تفاصيل الطلب</h3>
+                      {[[`${DEPARTMENTS[sel.department]?.icon} ${DEPARTMENTS[sel.department]?.label}`,"القسم"],[PRIORITIES.find(p=>p.value===sel.priority)?.label,"الأولوية"],[sel.date,"تاريخ الإنشاء"],[sel.updates.length,"عدد التحديثات"]].map(([v,l])=>(
+                        <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #1E293B",fontSize:12}}>
+                          <span style={{color:"#64748B"}}>{l}</span><span style={{color:"#E2E8F0",fontWeight:600}}>{v}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="card" style={{padding:16,marginBottom:13}}>
+                      <h3 style={{fontSize:12,fontWeight:700,marginBottom:11,color:"#94A3B8"}}>⚡ إجراءات سريعة</h3>
+                      {["inprogress","pending","resolved","closed"].map(s=>(
+                        <button key={s} className="btn-ghost" style={{width:"100%",marginBottom:7,textAlign:"right",color:STATUS[s].color,borderColor:STATUS[s].color+"44",fontSize:13}}
+                          onClick={()=>doUpdate(s,`تم تغيير الحالة إلى: ${STATUS[s].label}`)}>
+                          {STATUS[s].icon} {STATUS[s].label}
+                        </button>
+                      ))}
+                    </div>
+                    {isAdmin&&(
+                      <div className="card" style={{padding:16}}>
+                        <h3 style={{fontSize:12,fontWeight:700,marginBottom:8,color:"#94A3B8"}}>📢 إشعار يدوي</h3>
+                        <p style={{fontSize:11,color:"#64748B",marginBottom:10}}>إرسال تنبيه لقسم الجودة وخدمة العملاء</p>
+                        <button className="btn-primary" style={{width:"100%",fontSize:12}} onClick={()=>{
+                          const fu=USERS.find(x=>x.dept==="fuel"); const cu=USERS.find(x=>x.dept==="service");
+                          addNotif({message:`📢 تنبيه: "${sel.title}"`,ticketId:sel.id,icon:"📢",to:[fu?.id,cu?.id].filter(Boolean)});
+                          alert("✅ تم الإرسال");
+                        }}>📢 إرسال إشعار</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TRACK */}
+            {view==="track"&&(
+              <div className="slide-in" style={{maxWidth:560,margin:"0 auto"}}>
+                <h1 style={{fontSize:19,fontWeight:700,marginBottom:4,color:"#F1F5F9"}}>تتبع حالة الطلب</h1>
+                <p style={{color:"#64748B",fontSize:13,marginBottom:22}}>أدخل رقم الطلب للاطلاع على حالته</p>
+                <Track tickets={tickets} />
+              </div>
+            )}
+
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
